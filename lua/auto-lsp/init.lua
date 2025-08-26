@@ -29,8 +29,8 @@ function M.setup(opts)
   local ok, mappings = pcall(dofile, M.MAPPINGS_FILE)
 
   local valid = ok
-    and mappings.source.path == M.LSPCONFIG_DIR
-    and mappings.source.mtime == mtime
+      and mappings.source.path == M.LSPCONFIG_DIR
+      and mappings.source.mtime == mtime
 
   if not valid then
     mappings = M.build()
@@ -91,11 +91,11 @@ function M.setup(opts)
 
   local function complete(arglead, _, _)
     return vim
-      .iter({ "info", "build", "mappings", "refresh" })
-      :filter(function(subcmd)
-        return subcmd:find(arglead) == 1
-      end)
-      :totable()
+        .iter({ "info", "build", "mappings", "refresh" })
+        :filter(function(subcmd)
+          return subcmd:find(arglead) == 1
+        end)
+        :totable()
   end
 
   vim.api.nvim_create_user_command(
