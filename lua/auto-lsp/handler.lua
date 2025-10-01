@@ -72,7 +72,7 @@ function M:check_server(name, recheck)
     end
 
     config = vim.tbl_deep_extend("force", self.global_config, config)
-    vim.lsp.config[name] = config
+    vim.lsp.config(name, config)
     vim.lsp.enable(name)
   end
 

@@ -4,7 +4,8 @@ Automatically detect and setup language servers available on your system.
 
 1. Have `auto-lsp.nvim` installed and setup.
 2. Have language servers installed, using *any* method you prefer.
-3. `lspconfig[server].setup()` is called automatically for each server.
+3. Lazily sets the config for a server using `vim.lsp.config(server, config)`.
+4. `vim.lsp.enable(server)` is called automatically for each server.
 
 As simple as that! Enjoy the fully automated integration with language servers.
 
