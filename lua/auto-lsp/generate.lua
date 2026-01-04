@@ -25,21 +25,30 @@ local function generate(config_dir)
   for _, file in ipairs(config_files) do
     local name = vim.fn.fnamemodify(file, ":r")
     local path = vim.fs.joinpath(config_dir, file)
-    local config = dofile(path)
-
-    if config.filetypes then
-      for _, ft in ipairs(config.filetypes) do
-        filetype_servers[ft] = filetype_servers[ft] or {}
-        table.insert(filetype_servers[ft], name)
+    local file_content = vim.fn.readfile(path)
+    local is_deprecated = false
+    for _, line in ipairs(file_content) do
+      if line:match("vim%.deprecate") then
+        is_deprecated = true
+        break
       end
-    else
-      table.insert(generic_servers, name)
     end
+    if not is_deprecated then
+      local config = dofile(path)
+      if config.filetypes then
+        for _, ft in ipairs(config.filetypes) do
+          filetype_servers[ft] = filetype_servers[ft] or {}
+          table.insert(filetype_servers[ft], name)
+        end
+      else
+        table.insert(generic_servers, name)
+      end
 
-    if type(config.cmd) == "table" then
-      local exec = config.cmd[1]
-      if not ignored_executables[exec] then
-        server_executable[name] = exec
+      if type(config.cmd) == "table" then
+        local exec = config.cmd[1]
+        if not ignored_executables[exec] then
+          server_executable[name] = exec
+        end
       end
     end
   end
