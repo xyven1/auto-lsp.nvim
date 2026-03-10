@@ -16,38 +16,40 @@ local ignored_executables = {
   racket = true,
 }
 
-local function generate(config_dir)
+local function generate(config_dirs)
   local generic_servers = {}
   local filetype_servers = {}
   local server_executable = {}
 
-  local config_files = vim.fn.readdir(config_dir)
-  for _, file in ipairs(config_files) do
-    local name = vim.fn.fnamemodify(file, ":r")
-    local path = vim.fs.joinpath(config_dir, file)
-    local file_content = vim.fn.readfile(path)
-    local is_deprecated = false
-    for _, line in ipairs(file_content) do
-      if line:match("vim%.deprecate") then
-        is_deprecated = true
-        break
-      end
-    end
-    if not is_deprecated then
-      local config = dofile(path)
-      if config.filetypes then
-        for _, ft in ipairs(config.filetypes) do
-          filetype_servers[ft] = filetype_servers[ft] or {}
-          table.insert(filetype_servers[ft], name)
+  for _, config_dir in ipairs(config_dirs) do
+    local config_files = vim.fn.readdir(config_dir)
+    for _, file in ipairs(config_files) do
+      local name = vim.fn.fnamemodify(file, ":r")
+      local path = vim.fs.joinpath(config_dir, file)
+      local file_content = vim.fn.readfile(path)
+      local is_deprecated = false
+      for _, line in ipairs(file_content) do
+        if line:match("vim%.deprecate") then
+          is_deprecated = true
+          break
         end
-      else
-        table.insert(generic_servers, name)
       end
+      if not is_deprecated then
+        local config = dofile(path)
+        if config.filetypes then
+          for _, ft in ipairs(config.filetypes) do
+            filetype_servers[ft] = filetype_servers[ft] or {}
+            table.insert(filetype_servers[ft], name)
+          end
+        else
+          table.insert(generic_servers, name)
+        end
 
-      if type(config.cmd) == "table" then
-        local exec = config.cmd[1]
-        if not ignored_executables[exec] then
-          server_executable[name] = exec
+        if type(config.cmd) == "table" then
+          local exec = config.cmd[1]
+          if not ignored_executables[exec] then
+            server_executable[name] = exec
+          end
         end
       end
     end
@@ -57,10 +59,12 @@ local function generate(config_dir)
     generic_servers = generic_servers,
     filetype_servers = filetype_servers,
     server_executable = server_executable,
-    source = {
-      path = config_dir,
-      mtime = uv.fs_stat(config_dir).mtime.sec,
-    },
+    sources = vim.tbl_map(function(config_dir)
+      return {
+        path = config_dir,
+        mtime = uv.fs_stat(config_dir).mtime.sec,
+      }
+    end, config_dirs),
   }
 end
 

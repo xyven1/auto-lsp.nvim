@@ -7,15 +7,13 @@ local augroup = vim.api.nvim_create_augroup
 local autocmd = vim.api.nvim_create_autocmd
 
 M.MAPPINGS_FILE = vim.fn.stdpath("data") .. "/auto-lsp-mappings.lua"
-M.LSPCONFIG_DIR = assert(
-  vim.api.nvim_get_runtime_file("lsp/", false)[1],
-  "Could not find `lsp/` directory in the 'runtimepath'"
-)
+M.LSPCONFIG_DIRS = vim.api.nvim_get_runtime_file("lsp/", true)
+assert(#M.LSPCONFIG_DIRS > 0, "Could not find any `lsp/` directory in the 'runtimepath'")
 
 function M.build()
   vim.notify("[auto-lsp.nvim] Updating the server mappings...")
 
-  local mappings = require("auto-lsp.generate")(M.LSPCONFIG_DIR)
+  local mappings = require("auto-lsp.generate")(M.LSPCONFIG_DIRS)
   local file = assert(io.open(M.MAPPINGS_FILE, "w"))
   file:write("return ", vim.inspect(mappings))
   file:close()
@@ -25,12 +23,16 @@ function M.build()
 end
 
 function M.setup(opts)
-  local mtime = uv.fs_stat(M.LSPCONFIG_DIR).mtime.sec
+  local sources = vim.tbl_map(function(config_dir)
+    return {
+      path = config_dir,
+      mtime = uv.fs_stat(config_dir).mtime.sec,
+    }
+  end, M.LSPCONFIG_DIRS)
+
   local ok, mappings = pcall(dofile, M.MAPPINGS_FILE)
 
-  local valid = ok
-      and mappings.source.path == M.LSPCONFIG_DIR
-      and mappings.source.mtime == mtime
+  local valid = ok and vim.deep_equal(mappings.sources, sources)
 
   if not valid then
     mappings = M.build()
