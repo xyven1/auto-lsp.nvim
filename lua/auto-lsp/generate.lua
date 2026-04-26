@@ -45,11 +45,22 @@ local function generate(config_dirs)
           table.insert(generic_servers, name)
         end
 
-        if type(config.cmd) == "table" then
+        if not config.cmd then
+          vim.notify(
+            string.format(
+              "auto-lsp: No 'cmd' field found for server '%s' in file '%s'",
+              name,
+              path
+            ),
+            vim.log.levels.WARN
+          )
+        elseif type(config.cmd) == "table" then
           local exec = config.cmd[1]
           if not ignored_executables[exec] then
             server_executable[name] = exec
           end
+        elseif type(config.cmd) == "function" then
+          server_executable[name] = true
         end
       end
     end
