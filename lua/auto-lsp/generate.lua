@@ -16,6 +16,33 @@ local ignored_executables = {
   racket = true,
 }
 
+-- find the executable a function `cmd` would spawn, by calling it with the
+-- rpc transports stubbed out so that nothing is actually started
+---@param cmd fun(dispatchers: table, config: table)
+---@return string|true exec the executable, or true if it can't be determined
+local function probe_cmd(cmd)
+  local rpc = vim.lsp.rpc
+  local start, connect = rpc.start, rpc.connect
+  local new_tcp, new_pipe = uv.new_tcp, uv.new_pipe
+  local exec
+
+  local function abort()
+    error("auto-lsp: probe")
+  end
+  rpc.start = function(spawn_cmd)
+    exec = type(spawn_cmd) == "table" and spawn_cmd[1] or spawn_cmd
+    abort()
+  end
+  -- `cmd` may itself be the result of `vim.lsp.rpc.connect()`, so the sockets
+  -- have to be blocked as well
+  rpc.connect, uv.new_tcp, uv.new_pipe = abort, abort, abort
+  pcall(cmd, {}, {})
+  rpc.start, rpc.connect = start, connect
+  uv.new_tcp, uv.new_pipe = new_tcp, new_pipe
+
+  return type(exec) == "string" and exec or true
+end
+
 local function generate(config_dirs)
   local generic_servers = {}
   local filetype_servers = {}
@@ -60,7 +87,10 @@ local function generate(config_dirs)
             server_executable[name] = exec
           end
         elseif type(config.cmd) == "function" then
-          server_executable[name] = true
+          local exec = probe_cmd(config.cmd)
+          if not ignored_executables[exec] then
+            server_executable[name] = exec
+          end
         end
       end
     end
